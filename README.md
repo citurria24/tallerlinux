@@ -1,2 +1,2 @@
 # tallerlinux
-Trabajos del Taller Linu
+Trabajos del Taller Linux
