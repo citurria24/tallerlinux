@@ -1,0 +1,39 @@
+---
+- name: Install and configure mariadb on ubuntu
+  hosts: ubuntu01
+  become: true
+  vars_files:
+    - ../vars/database.yaml
+    
+  tasks:
+  
+  - name: Install mariadb server
+    ansible.builtin.apt:
+      name: mariadb-server
+      state: present
+        
+  - name: Bind mariadb to any interface
+    ansible.builtin.lineinfile:
+      path: /etc/mysql/mariadb.conf.d/50-server.cnf
+      regexp: '^bind-address'
+      line: 'bind-address = 0.0.0.0'
+    notify: Restart mariadb server
+ 
+  - name: Mariadb started and enabled
+    ansible.builtin.systemd_service:
+      name: mariadb
+      state: started
+      enabled: true
+    
+  - name: Allow connections to database in UFW
+    community.general.ufw:
+      port: 3306
+      proto: tcp
+      rule: allow
+ 
+  handlers:
+
+  - name: Restart mariadb server
+    ansible.builtin.systemd_service:
+      name: mariadb
+      state: restarted
