@@ -93,11 +93,15 @@
         login_unix_socket: /run/mysqld/mysqld.sock
       no_log: true
 
-    - name: Allow connections to database in UFW
+    - name: Allow MariaDB from application servers
       community.general.ufw:
         port: 3306
         proto: tcp
         rule: allow
+        from_ip: "{{ item }}"
+      loop:
+       - 10.0.2.15
+       - 10.0.2.3
 
   handlers:
 
