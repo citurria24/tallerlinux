@@ -2,38 +2,106 @@
 - name: Install and configure mariadb on ubuntu
   hosts: ubuntu01
   become: true
+
   vars_files:
     - ../vars/database.yaml
-    
+
   tasks:
-  
-  - name: Install mariadb server
-    ansible.builtin.apt:
-      name: mariadb-server
-      state: present
-        
-  - name: Bind mariadb to any interface
-    ansible.builtin.lineinfile:
-      path: /etc/mysql/mariadb.conf.d/50-server.cnf
-      regexp: '^bind-address'
-      line: 'bind-address = 0.0.0.0'
-    notify: Restart mariadb server
- 
-  - name: Mariadb started and enabled
-    ansible.builtin.systemd_service:
-      name: mariadb
-      state: started
-      enabled: true
-    
-  - name: Allow connections to database in UFW
-    community.general.ufw:
-      port: 3306
-      proto: tcp
-      rule: allow
- 
+
+    - name: Install mariadb server
+      ansible.builtin.apt:
+        name: mariadb-server
+        state: present
+
+    - name: Install Python MySQL dependency
+      ansible.builtin.apt:
+        name: python3-pymysql
+        state: present
+
+    - name: Bind mariadb to any interface
+      ansible.builtin.lineinfile:
+        path: /etc/mysql/mariadb.conf.d/50-server.cnf
+        regexp: '^bind-address'
+        line: 'bind-address = 0.0.0.0'
+      notify: Restart mariadb server
+
+    - name: Mariadb started and enabled
+      ansible.builtin.systemd_service:
+        name: mariadb
+        state: started
+        enabled: true
+
+    - name: Create application database
+      community.mysql.mysql_db:
+        name: "{{ DB_DBASE }}"
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+
+    - name: Check if cumpleanios table exists
+      community.mysql.mysql_query:
+        login_db: "{{ DB_DBASE }}"
+        login_unix_socket: /run/mysqld/mysqld.sock
+        query: "SHOW TABLES LIKE 'cumpleanios'"
+      register: table_check
+      changed_when: false
+
+    - name: Create cumpleanios table
+      community.mysql.mysql_query:
+        login_db: "{{ DB_DBASE }}"
+        login_unix_socket: /run/mysqld/mysqld.sock
+        query: |
+          CREATE TABLE cumpleanios (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(100),
+            fecha DATE
+          )
+      when: table_check.rowcount[0] | int == 0
+
+    - name: Check birthday data
+      community.mysql.mysql_query:
+        login_db: "{{ DB_DBASE }}"
+        login_unix_socket: /run/mysqld/mysqld.sock
+        query: >
+          SELECT id
+          FROM cumpleanios
+          WHERE nombre = '{{ item.nombre }}'
+          AND fecha = '{{ item.fecha }}'
+      loop:
+        - { nombre: "Frodo Baggins", fecha: "2005-01-14" }
+        - { nombre: "Aragorn", fecha: "2004-02-09" }
+        - { nombre: "Arwen Undomiel", fecha: "1994-12-09" }
+      register: birthday_check
+      changed_when: false
+
+    - name: Insert missing birthday data
+      community.mysql.mysql_query:
+        login_db: "{{ DB_DBASE }}"
+        login_unix_socket: /run/mysqld/mysqld.sock
+        query: >
+          INSERT INTO cumpleanios (nombre, fecha)
+          VALUES ('{{ item.item.nombre }}', '{{ item.item.fecha }}')
+      loop: "{{ birthday_check.results }}"
+      when: item.rowcount[0] | int == 0
+
+    - name: Create application database user
+      community.mysql.mysql_user:
+        name: "{{ DB_USER }}"
+        password: "{{ DB_PASS }}"
+        host: "%"
+        priv: "{{ DB_DBASE }}.*:SELECT"
+        state: present
+        login_unix_socket: /run/mysqld/mysqld.sock
+      no_log: true
+
+    - name: Allow connections to database in UFW
+      community.general.ufw:
+        port: 3306
+        proto: tcp
+        rule: allow
+
   handlers:
 
-  - name: Restart mariadb server
-    ansible.builtin.systemd_service:
-      name: mariadb
-      state: restarted
+    - name: Restart mariadb server
+      ansible.builtin.systemd_service:
+        name: mariadb
+        state: restarted
