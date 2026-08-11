@@ -311,19 +311,13 @@ Todos los pasos se realizan desde:
 ansible-galaxy collection install -r collections/requirements.yaml
 ```
 
-### 7.2 Comprobar conectividad con los servidores
-
-```bash
-ansible all -i inventory/hosts.ini -m ping
-```
-
-### 7.3 Comprobar la sintaxis del despliegue
+### 7.2 Comprobar la sintaxis del despliegue
 
 ```bash
 ansible-playbook -i inventory/hosts.ini playbooks/deploy.yaml --syntax-check --ask-vault-pass
 ```
 
-### 7.4 Ejecutar el despliegue completo
+### 7.3 Ejecutar el despliegue completo
 
 ```bash
 ansible-playbook -i inventory/hosts.ini playbooks/deploy.yaml --ask-become-pass --ask-vault-pass
@@ -334,7 +328,7 @@ BECOME password: aslxlab
 Vault password: s3cret
 ```
 
-### 7.5 Ejecutar las validaciones
+### 7.4 Ejecutar las validaciones
 
 ```bash
 ansible-playbook -i inventory/hosts.ini playbooks/validate.yaml --ask-become-pass
@@ -388,13 +382,13 @@ El resultado de una ejecución del playbook principal se encuentra en:
 
 ### Idempotencia
 
-La idempotencia se comprueba ejecutando nuevamente `playbooks/deploy.yaml` una vez aplicado el estado requerido.
+La idempotencia fue validada previamente mediante una nueva ejecución de `playbooks/deploy.yaml` sobre la infraestructura ya configurada.
 
-En una segunda ejecución, el resultado esperado es:
+En dicha ejecución, los hosts finalizaron sin cambios pendientes ni errores:
 
 ```text
 centos01  changed=0  failed=0
 ubuntu01  changed=0  failed=0
 ```
 
-Esto confirma que el despliegue no realiza cambios innecesarios cuando la configuración ya se encuentra aplicada.
+Esto confirma que, una vez alcanzado el estado requerido, el playbook reconoce la configuración existente y no realiza cambios innecesarios.
