@@ -1,0 +1,64 @@
+
+PLAY [Install and configure MariaDB on Ubuntu] *********************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [ubuntu01]
+
+TASK [Install MariaDB packages] ************************************************
+ok: [ubuntu01]
+
+TASK [Bind MariaDB to any interface] *******************************************
+ok: [ubuntu01]
+
+TASK [MariaDB started and enabled] *********************************************
+ok: [ubuntu01]
+
+TASK [Configure MariaDB root password] *****************************************
+ok: [ubuntu01] => (item=None)
+ok: [ubuntu01] => (item=None)
+ok: [ubuntu01]
+
+TASK [Create application database] *********************************************
+ok: [ubuntu01]
+
+TASK [Check if cumpleanios table exists] ***************************************
+ok: [ubuntu01]
+
+TASK [Create cumpleanios table] ************************************************
+skipping: [ubuntu01]
+
+TASK [Insert missing birthday data] ********************************************
+ok: [ubuntu01]
+
+TASK [Create application database user] ****************************************
+ok: [ubuntu01]
+
+TASK [Allow MariaDB from application server] ***********************************
+ok: [ubuntu01]
+
+PLAY [Deploy webserver and PHP application] ************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [centos01]
+
+TASK [Install http and php-fpm packages] ***************************************
+ok: [centos01]
+
+TASK [Services httpd and php-fpm are enabled and started] **********************
+ok: [centos01] => (item=httpd)
+ok: [centos01] => (item=php-fpm)
+
+TASK [Allow http on firewalld] *************************************************
+ok: [centos01]
+
+TASK [Install php application] *************************************************
+ok: [centos01]
+
+TASK [Set selinux booleans for database access from apache] ********************
+ok: [centos01] => (item=httpd_can_network_connect)
+ok: [centos01] => (item=httpd_can_network_connect_db)
+
+PLAY RECAP *********************************************************************
+centos01                   : ok=6    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+ubuntu01                   : ok=10   changed=0    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+

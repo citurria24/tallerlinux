@@ -1,107 +1,108 @@
 ---
-- name: Install and configure mariadb on ubuntu
+- name: Install and configure MariaDB on Ubuntu
   hosts: ubuntu01
   become: true
 
   vars_files:
     - ../vars/database.yaml
 
+  vars:
+    mariadb_packages:
+      - mariadb-server
+      - python3-pymysql
+
   tasks:
 
-    - name: Install mariadb server
+    - name: Install MariaDB packages
       ansible.builtin.apt:
-        name: mariadb-server
+        name: "{{ mariadb_packages }}"
         state: present
 
-    - name: Install Python MySQL dependency
-      ansible.builtin.apt:
-        name: python3-pymysql
-        state: present
-
-    - name: Bind mariadb to any interface
+    - name: Bind MariaDB to any interface
       ansible.builtin.lineinfile:
         path: /etc/mysql/mariadb.conf.d/50-server.cnf
         regexp: '^bind-address'
         line: 'bind-address = 0.0.0.0'
       notify: Restart mariadb server
 
-    - name: Mariadb started and enabled
+    - name: MariaDB started and enabled
       ansible.builtin.systemd_service:
         name: mariadb
         state: started
         enabled: true
 
+    - name: Configure MariaDB root password
+      community.mysql.mysql_user:
+        login_user: root
+        login_password: "{{ DB_ROOT_PW }}"
+        login_unix_socket: /run/mysqld/mysqld.sock
+        check_implicit_admin: true
+        name: root
+        host: "{{ item }}"
+        password: "{{ DB_ROOT_PW }}"
+        state: present
+      loop:
+        - localhost
+        - 127.0.0.1
+      no_log: true
+
     - name: Create application database
       community.mysql.mysql_db:
+        login_user: root
+        login_password: "{{ DB_ROOT_PW }}"
+        login_unix_socket: /run/mysqld/mysqld.sock
+        check_implicit_admin: false
         name: "{{ DB_DBASE }}"
         state: present
-        login_unix_socket: /run/mysqld/mysqld.sock
 
     - name: Check if cumpleanios table exists
       community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ DB_ROOT_PW }}"
         login_db: "{{ DB_DBASE }}"
         login_unix_socket: /run/mysqld/mysqld.sock
-        query: "SHOW TABLES LIKE 'cumpleanios'"
+        query: "{{ lookup('ansible.builtin.file', playbook_dir + '/../sql/check_table.sql') }}"
       register: table_check
       changed_when: false
 
     - name: Create cumpleanios table
       community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ DB_ROOT_PW }}"
         login_db: "{{ DB_DBASE }}"
         login_unix_socket: /run/mysqld/mysqld.sock
-        query: |
-          CREATE TABLE cumpleanios (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            nombre VARCHAR(100),
-            fecha DATE
-          )
+        query: "{{ lookup('ansible.builtin.file', playbook_dir + '/../sql/create_table.sql') }}"
       when: table_check.rowcount[0] | int == 0
-
-    - name: Check birthday data
-      community.mysql.mysql_query:
-        login_db: "{{ DB_DBASE }}"
-        login_unix_socket: /run/mysqld/mysqld.sock
-        query: >
-          SELECT id
-          FROM cumpleanios
-          WHERE nombre = '{{ item.nombre }}'
-          AND fecha = '{{ item.fecha }}'
-      loop:
-        - { nombre: "Frodo Baggins", fecha: "2005-01-14" }
-        - { nombre: "Aragorn", fecha: "2004-02-09" }
-        - { nombre: "Arwen Undomiel", fecha: "1994-12-09" }
-      register: birthday_check
-      changed_when: false
 
     - name: Insert missing birthday data
       community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ DB_ROOT_PW }}"
         login_db: "{{ DB_DBASE }}"
         login_unix_socket: /run/mysqld/mysqld.sock
-        query: >
-          INSERT INTO cumpleanios (nombre, fecha)
-          VALUES ('{{ item.item.nombre }}', '{{ item.item.fecha }}')
-      loop: "{{ birthday_check.results }}"
-      when: item.rowcount[0] | int == 0
+        query: "{{ lookup('ansible.builtin.file', playbook_dir + '/../sql/insert_data.sql') }}"
+      register: insert_data
+      changed_when: insert_data.rowcount[0] | int > 0
 
     - name: Create application database user
       community.mysql.mysql_user:
+        login_user: root
+        login_password: "{{ DB_ROOT_PW }}"
+        login_unix_socket: /run/mysqld/mysqld.sock
+        check_implicit_admin: false
         name: "{{ DB_USER }}"
         password: "{{ DB_PASS }}"
         host: "%"
         priv: "{{ DB_DBASE }}.*:SELECT"
         state: present
-        login_unix_socket: /run/mysqld/mysqld.sock
       no_log: true
 
-    - name: Allow MariaDB from application servers
+    - name: Allow MariaDB from application server
       community.general.ufw:
         port: 3306
         proto: tcp
         rule: allow
-        from_ip: "{{ item }}"
-      loop:
-       - 10.0.2.15
-       - 10.0.2.3
+        from_ip: 10.0.2.15
 
   handlers:
 

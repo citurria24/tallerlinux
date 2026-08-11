@@ -1,0 +1,61 @@
+---
+- name: Validate MariaDB server
+  hosts: ubuntu01
+  become: true
+  gather_facts: false
+
+  tasks:
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Check MariaDB service
+      ansible.builtin.assert:
+        that:
+          - "'mariadb.service' in ansible_facts.services"
+          - ansible_facts.services['mariadb.service'].state == 'running'
+        success_msg: "MariaDB está funcionando correctamente"
+        fail_msg: "MariaDB no está funcionando"
+
+- name: Validate web application
+  hosts: centos01
+  become: true
+  gather_facts: false
+
+  tasks:
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Check Apache and PHP-FPM services
+      ansible.builtin.assert:
+        that:
+          - "'httpd.service' in ansible_facts.services"
+          - ansible_facts.services['httpd.service'].state == 'running'
+          - "'php-fpm.service' in ansible_facts.services"
+          - ansible_facts.services['php-fpm.service'].state == 'running'
+        success_msg: "Apache y PHP-FPM están funcionando correctamente"
+        fail_msg: "Apache o PHP-FPM no están funcionando correctamente"
+
+    - name: Check MariaDB connectivity from application server
+      ansible.builtin.wait_for:
+        host: 10.0.2.100
+        port: 3306
+        state: started
+        timeout: 5
+
+    - name: Check web application
+      ansible.builtin.uri:
+        url: http://127.0.0.1/
+        status_code: 200
+        return_content: true
+      register: app_response
+
+    - name: Check application data
+      ansible.builtin.assert:
+        that:
+          - "'Frodo Baggins' in app_response.content"
+          - "'Aragorn' in app_response.content"
+          - "'Arwen Undomiel' in app_response.content"
+        success_msg: "La aplicación está funcionando y mostrando correctamente los datos de la base de datos"
+        fail_msg: "La aplicación no está mostrando los datos esperados de la base de datos"

@@ -1,6 +1,6 @@
 ---
 - name: Deploy webserver and PHP application
-  hosts: centos
+  hosts: centos01
   become: true
   vars_files:
     - ../vars/database.yaml
