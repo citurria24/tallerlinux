@@ -372,6 +372,7 @@ Arwen Undomiel - 1994-12-09
 
 Evidencia visual del funcionamiento de la aplicación:
 
+![Aplicación funcionando](evidencias/app_funcionando_10.0.2.15.png)
 
 
 ### Ejecución del playbook principal
