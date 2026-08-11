@@ -87,15 +87,6 @@ centos
 ubuntu
 linux
 ```
-
-El grupo `linux` contiene como hijos a los grupos `centos` y `ubuntu`.
-
-Las variables comunes se encuentran en:
-
-```text
-inventory/group_vars/linux.yaml
-```
-
 ---
 
 ## Colecciones de Ansible
@@ -146,7 +137,7 @@ Las variables definidas son:
 ```yaml
 DB_SERVER: 10.0.2.100
 DB_USER: intranet
-DB_PASS: [PROTEGIDA MEDIANTE ANSIBLE VAULT]
+DB_PASS: s3cret
 DB_DBASE: cumples
 ```
 
@@ -161,8 +152,6 @@ Para editarlo:
 ```bash
 ansible-vault edit vars/database.yaml
 ```
-
-La contraseña del usuario de MariaDB y la contraseña utilizada para abrir Ansible Vault no se almacenan en texto plano en el repositorio.
 
 ---
 
@@ -477,8 +466,6 @@ site.yaml
           +-- firewalld
           +-- SELinux
 ```
-
-El hardening se mantiene como un playbook independiente.
 
 ---
 
@@ -810,10 +797,6 @@ Arwen Undomiel - 1994-12-09
 
 ![Aplicación funcionando en centos01](evidencias/app_funcionando_10.0.2.15.png)
 
-### Aplicación funcionando en `centos02` - `10.0.2.3`
-
-![Aplicación funcionando en centos02](evidencias/app_funcionando_10.0.2.3.png)
-
 Esto comprueba que:
 
 - Apache está funcionando.
@@ -834,95 +817,82 @@ ansible-playbook -i inventory/hosts.ini playbooks/site.yaml --ask-become-pass --
 ```
 
 El resultado fue:
+PLAY [Install and configure mariadb on ubuntu] *********************************
 
-```text
-PLAY RECAP
+TASK [Gathering Facts] *********************************************************
+ok: [ubuntu01]
 
-centos01 : ok=6  changed=0  unreachable=0  failed=0  skipped=0
-centos02 : ok=6  changed=0  unreachable=0  failed=0  skipped=0
-ubuntu01 : ok=10 changed=0  unreachable=0  failed=0  skipped=2
-```
+TASK [Install mariadb server] **************************************************
+ok: [ubuntu01]
 
-La segunda ejecución no realizó cambios innecesarios:
+TASK [Install Python MySQL dependency] *****************************************
+ok: [ubuntu01]
 
-```text
-changed=0
-failed=0
-```
+TASK [Bind mariadb to any interface] *******************************************
+ok: [ubuntu01]
 
-Las tareas de creación de la tabla y carga de datos fueron omitidas porque los elementos ya existían.
+TASK [Mariadb started and enabled] *********************************************
+ok: [ubuntu01]
 
-### Evidencias de idempotencia
+TASK [Create application database] *********************************************
+ok: [ubuntu01]
 
-![Idempotencia - evidencia 1](evidencias/idempotencia_1.png)
+TASK [Check if cumpleanios table exists] ***************************************
+ok: [ubuntu01]
 
-![Idempotencia - evidencia 2](evidencias/idempotencia_2.png)
+TASK [Create cumpleanios table] ************************************************
+skipping: [ubuntu01]
 
-![Idempotencia - evidencia 3](evidencias/idempotencia_3.png)
+TASK [Check birthday data] *****************************************************
+ok: [ubuntu01] => (item={'nombre': 'Frodo Baggins', 'fecha': '2005-01-14'})
+ok: [ubuntu01] => (item={'nombre': 'Aragorn', 'fecha': '2004-02-09'})
+ok: [ubuntu01] => (item={'nombre': 'Arwen Undomiel', 'fecha': '1994-12-09'})
 
-![Idempotencia - evidencia 4](evidencias/idempotencia_4.png)
+TASK [Insert missing birthday data] ********************************************
+skipping: [ubuntu01] => (item={'changed': False, 'executed_queries': ["SELECT id FROM cumpleanios WHERE nombre = 'Frodo Baggins' AND fecha = '2005-01-14'\n"], 'query_result': [[{'id': 1}]], 'rowcount': [1], 'execution_time_ms': [0.5459], 'invocation': {'module_args': {'login_db': 'cumples', 'login_unix_socket': '/run/mysqld/mysqld.sock', 'query': "SELECT id FROM cumpleanios WHERE nombre = 'Frodo Baggins' AND fecha = '2005-01-14'\n", 'login_host': 'localhost', 'login_port': 3306, 'config_file': '/root/.my.cnf', 'connect_timeout': 30, 'single_transaction': False, 'login_user': None, 'login_password': None, 'client_cert': None, 'client_key': None, 'ca_cert': None, 'check_hostname': None, 'positional_args': None, 'named_args': None, 'session_vars': None}}, 'failed': False, 'item': {'nombre': 'Frodo Baggins', 'fecha': '2005-01-14'}, 'ansible_loop_var': 'item'}) 
+skipping: [ubuntu01] => (item={'changed': False, 'executed_queries': ["SELECT id FROM cumpleanios WHERE nombre = 'Aragorn' AND fecha = '2004-02-09'\n"], 'query_result': [[{'id': 2}]], 'rowcount': [1], 'execution_time_ms': [0.4231], 'invocation': {'module_args': {'login_db': 'cumples', 'login_unix_socket': '/run/mysqld/mysqld.sock', 'query': "SELECT id FROM cumpleanios WHERE nombre = 'Aragorn' AND fecha = '2004-02-09'\n", 'login_host': 'localhost', 'login_port': 3306, 'config_file': '/root/.my.cnf', 'connect_timeout': 30, 'single_transaction': False, 'login_user': None, 'login_password': None, 'client_cert': None, 'client_key': None, 'ca_cert': None, 'check_hostname': None, 'positional_args': None, 'named_args': None, 'session_vars': None}}, 'failed': False, 'item': {'nombre': 'Aragorn', 'fecha': '2004-02-09'}, 'ansible_loop_var': 'item'}) 
+skipping: [ubuntu01] => (item={'changed': False, 'executed_queries': ["SELECT id FROM cumpleanios WHERE nombre = 'Arwen Undomiel' AND fecha = '1994-12-09'\n"], 'query_result': [[{'id': 3}]], 'rowcount': [1], 'execution_time_ms': [1.6425], 'invocation': {'module_args': {'login_db': 'cumples', 'login_unix_socket': '/run/mysqld/mysqld.sock', 'query': "SELECT id FROM cumpleanios WHERE nombre = 'Arwen Undomiel' AND fecha = '1994-12-09'\n", 'login_host': 'localhost', 'login_port': 3306, 'config_file': '/root/.my.cnf', 'connect_timeout': 30, 'single_transaction': False, 'login_user': None, 'login_password': None, 'client_cert': None, 'client_key': None, 'ca_cert': None, 'check_hostname': None, 'positional_args': None, 'named_args': None, 'session_vars': None}}, 'failed': False, 'item': {'nombre': 'Arwen Undomiel', 'fecha': '1994-12-09'}, 'ansible_loop_var': 'item'}) 
+skipping: [ubuntu01]
 
+TASK [Create application database user] ****************************************
+ok: [ubuntu01]
+
+TASK [Allow MariaDB from application servers] **********************************
+ok: [ubuntu01] => (item=10.0.2.15)
+ok: [ubuntu01] => (item=10.0.2.3)
+
+PLAY [Deploy webserver and PHP application] ************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [centos01]
+ok: [centos02]
+
+TASK [Install http and php-fpm packages] ***************************************
+ok: [centos02]
+ok: [centos01]
+
+TASK [Services httpd and php-fpm are enabled and started] **********************
+ok: [centos01] => (item=httpd)
+ok: [centos02] => (item=httpd)
+ok: [centos02] => (item=php-fpm)
+ok: [centos01] => (item=php-fpm)
+
+TASK [Allow http on firewalld] *************************************************
+ok: [centos02]
+ok: [centos01]
+
+TASK [Install php application] *************************************************
+ok: [centos02]
+ok: [centos01]
+
+TASK [Set selinux booleans for database access from apache] ********************
+ok: [centos02] => (item=httpd_can_network_connect)
+ok: [centos01] => (item=httpd_can_network_connect)
+ok: [centos01] => (item=httpd_can_network_connect_db)
+ok: [centos02] => (item=httpd_can_network_connect_db)
+
+PLAY RECAP *********************************************************************
+centos01                   : ok=6    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+centos02                   : ok=6    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+ubuntu01                   : ok=10   changed=0    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0
 ---
-
-## Git
-
-El proyecto se encuentra versionado mediante Git.
-
-El desarrollo se realizó mediante commits progresivos para registrar las diferentes etapas de implementación.
-
-Entre las etapas registradas se encuentran:
-
-- Configuración inicial del proyecto.
-- Hardening y Fail2ban.
-- Configuración de Ansible Vault.
-- Despliegue del servidor web.
-- Configuración de MariaDB.
-- Creación de base, usuario, tabla y datos.
-- Implementación de validaciones para evitar duplicados.
-- Incorporación del playbook principal.
-
-La rama utilizada para el desarrollo final es:
-
-```text
-main
-```
-
----
-
-## Resultado final
-
-Actualmente la solución permite desplegar mediante Ansible:
-
-### CentOS
-
-- Apache.
-- PHP.
-- PHP-FPM.
-- Extensión para MariaDB.
-- Aplicación PHP.
-- Firewalld.
-- Configuración SELinux.
-
-### Ubuntu
-
-- MariaDB Server.
-- Servicio MariaDB.
-- Conexiones remotas.
-- Base `cumples`.
-- Tabla `cumpleanios`.
-- Datos iniciales.
-- Usuario `intranet`.
-- Permisos de lectura.
-- UFW con TCP/3306 restringido a `centos01` y `centos02`.
-
-### Ansible
-
-- Inventario organizado en grupos.
-- Variables comunes.
-- Variables sensibles protegidas con Ansible Vault.
-- Colecciones declaradas mediante `requirements.yaml`.
-- Uso de módulos específicos.
-- Handlers.
-- Playbook principal.
-- Validaciones.
-- Ejecución idempotente.
